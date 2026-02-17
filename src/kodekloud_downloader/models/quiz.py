@@ -1,13 +1,14 @@
 import concurrent.futures
-from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 import requests
+from pydantic import BaseModel, ConfigDict, Field
 
 
-@dataclass
-class QuizQuestion:
-    _id: Dict[str, str]
+class QuizQuestion(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    id: Dict[str, str] = Field(alias="_id")
     type: int
     correctAnswers: List[str]
     code: Dict[str, str]
@@ -19,9 +20,10 @@ class QuizQuestion:
     topic: Optional[str] = None
 
 
-@dataclass
-class Quiz:
-    _id: Dict[str, str]
+class Quiz(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    id: Dict[str, str] = Field(alias="_id")
     questions: Dict[str, str]
     name: Optional[str] = None
     topic: Optional[str] = None
