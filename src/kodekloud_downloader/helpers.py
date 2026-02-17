@@ -141,12 +141,14 @@ def download_all_pdf(content, download_path: Path, cookie: str) -> None:
     :param download_path: The output directory for the downloaded PDFs
     :param cookie: The user's authentication cookie
     """
+    session_token = parse_token(cookie)
+    headers = {"Authorization": f"Bearer {session_token}"}
     for link in content.find_all("a"):
         href = link.get("href")
         if href.endswith("pdf"):
             file_name = download_path / Path(href).name
             logger.info(f"Downloading {file_name}...")
-            response = requests.get(href, headers={"Cookie": cookie})
+            response = requests.get(href, headers=headers)
             file_name.write_bytes(response.content)
 
 
@@ -164,12 +166,23 @@ def parse_token(cookiefile: str) -> Optional[str]:
         with open(cookiefile, "r") as fp:
             for line in fp:
                 if line.strip() and not re.match(r"^\#", line):
+                    # Netscape cookie file format:
+                    # domain - boolean - path - boolean - expiration - name - value
                     line_fields = line.strip().split("\t")
-                    if len(line_fields) > 6:
+                    if len(line_fields) >= 7:
                         cookies[line_fields[5]] = line_fields[6]
+                    elif len(line_fields) >= 2:
+                        # Fallback for some other formats
+                        cookies[line_fields[0]] = line_fields[1]
     except FileNotFoundError:
         raise FileNotFoundError(f"The file {cookiefile} does not exist.")
     except IOError as e:
         raise IOError(f"Error reading the file {cookiefile}: {e}")
 
-    return cookies.get("session-cookie")
+    # Try common names for the session token
+    token = cookies.get("session-cookie") or cookies.get("session_cookie") or cookies.get("token")
+    
+    if token is None:
+        logger.debug(f"Available cookies in file: {list(cookies.keys())}")
+        
+    return token

@@ -1,3 +1,4 @@
+import http.cookiejar
 import logging
 from collections import defaultdict
 from pathlib import Path
@@ -117,7 +118,13 @@ def download_course(
     """
     session = requests.Session()
     session_token = parse_token(cookie)
-    headers = {"authorization": f"bearer {session_token}"}
+    if not session_token:
+        raise SystemExit(
+            f"Could not find a valid session token in {cookie}.\n"
+            "Please make sure your cookie file is correct and not expired."
+        )
+
+    headers = {"Authorization": f"Bearer {session_token}"}
     params = {
         "course_id": course.id,
     }
@@ -233,8 +240,10 @@ def download_resource_lesson(lesson_url, file_path: Path, cookie: str) -> None:
     :param file_path: The output file path for the resource
     :param cookie: The user's authentication cookie
     """
-    # TODO: Did we break this? I have no idea.
-    page = requests.get(lesson_url)
+    session_token = parse_token(cookie)
+    headers = {"Authorization": f"Bearer {session_token}"}
+    page = requests.get(lesson_url, headers=headers)
+    page.raise_for_status()
     soup = BeautifulSoup(page.content, "html.parser")
     content = soup.find("div", class_="learndash_content_wrap")
 
